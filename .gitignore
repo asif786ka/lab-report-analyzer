@@ -46,6 +46,11 @@ Thumbs.db
 .cache/
 .local/
 artifacts/api-server/test/
+.replit
+.replitignore
+replit.md
+.replit-artifact/
+**/.replit-artifact/
 
 # Environment
 .env
