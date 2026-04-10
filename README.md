@@ -103,6 +103,50 @@ providers.set("groq", new OpenAIProvider({
 }));
 ```
 
+## Testing with a Sample Report
+
+To quickly test the application, create a sample lab report PDF:
+
+1. Copy the text below into Google Docs (or any text editor)
+2. Export / Save as PDF
+3. Upload the PDF to the app
+
+```
+Patient: John Smith
+Age: 45 | Sex: Male
+Date: 2026-04-01
+Lab: City Medical Center
+
+Complete Blood Count (CBC)
+Hemoglobin        14.2 g/dL     (13.5-17.5)
+WBC               7.8 x10³/µL   (4.5-11.0)
+Platelets         245 x10³/µL   (150-400)
+RBC               5.1 M/µL      (4.7-6.1)
+Hematocrit        42.5 %        (38.3-48.6)
+
+Lipid Panel
+Total Cholesterol  235 mg/dL    (< 200)
+LDL Cholesterol    155 mg/dL    (< 100)
+HDL Cholesterol    42 mg/dL     (> 40)
+Triglycerides      190 mg/dL    (< 150)
+
+Metabolic Panel
+Glucose (Fasting)  105 mg/dL    (70-99)
+BUN                18 mg/dL     (7-20)
+Creatinine         1.1 mg/dL    (0.7-1.3)
+Sodium             140 mEq/L    (136-145)
+Potassium          4.2 mEq/L    (3.5-5.0)
+
+Thyroid
+TSH                2.5 mIU/L    (0.4-4.0)
+
+Liver Function
+ALT                32 U/L       (7-56)
+AST                28 U/L       (10-40)
+```
+
+This sample includes intentionally out-of-range values (Total Cholesterol, LDL, Triglycerides, Fasting Glucose) so you can see the color-coded classification, category grouping, and status filtering in action.
+
 ## API Endpoints
 
 | Method | Path | Description |
