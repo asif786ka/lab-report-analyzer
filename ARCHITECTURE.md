@@ -33,13 +33,13 @@ A full-stack TypeScript web application that processes PDF lab reports, extracts
 │  │              │   │              │   │  Pattern)      │  │
 │  └──────────────┘   └──────────────┘   └───────┬────────┘  │
 │                                                 │           │
-│                                    ┌────────────┼────────┐  │
-│                                    │            │        │  │
-│                                    ▼            ▼        ▼  │
-│                              ┌──────────┐ ┌────────┐ ┌────┐│
-│                              │  OpenAI  │ │ Claude │ │AWS ││
-│                              │ Provider │ │Provider│ │ .. ││
-│                              └──────────┘ └────────┘ └────┘│
+│                         ┌───────────────────────┼─────────────────────────┐
+│                         │         │         │         │         │         │
+│                         ▼         ▼         ▼         ▼         ▼         ▼
+│                    ┌────────┐┌────────┐┌────────┐┌────────┐┌────────┐┌────────┐
+│                    │ OpenAI ││ Claude ││  AWS   ││ Gemini ││Mistral ││ Cohere │
+│                    │ GPT-4o ││Sonnet 4││Bedrock ││  Pro   ││  Large ││Command │
+│                    └────────┘└────────┘└────────┘└────────┘└────────┘└────────┘
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -79,7 +79,7 @@ A full-stack TypeScript web application that processes PDF lab reports, extracts
 
 ### Current Implementation: OpenAI
 
-The application uses a **Strategy Pattern** for AI providers. The current implementation uses OpenAI's GPT-4o model.
+The application uses a **Strategy Pattern** for AI providers. The current implementation uses OpenAI's GPT-4o model. The design ensures any AI provider can be swapped in with minimal code changes.
 
 ### Interface Definition
 
@@ -92,9 +92,24 @@ interface AIProvider {
 }
 ```
 
+### Supported / Swappable AI Providers
+
+| Provider | SDK Package | Model Examples | Env Vars Required |
+|----------|------------|----------------|-------------------|
+| **OpenAI** (current) | `openai` | `gpt-4o`, `gpt-4-turbo`, `gpt-3.5-turbo` | `OPENAI_API_KEY`, `OPENAI_BASE_URL` |
+| **Anthropic Claude** | `@anthropic-ai/sdk` | `claude-sonnet-4-20250514`, `claude-3-opus`, `claude-3-haiku` | `ANTHROPIC_API_KEY` |
+| **AWS Bedrock** | `@aws-sdk/client-bedrock-runtime` | `anthropic.claude-3-sonnet`, `amazon.titan-text-express` | `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
+| **Google Gemini** | `@google/generative-ai` | `gemini-pro`, `gemini-1.5-pro`, `gemini-1.5-flash` | `GOOGLE_AI_API_KEY` |
+| **Mistral AI** | `@mistralai/mistralai` | `mistral-large-latest`, `mistral-medium` | `MISTRAL_API_KEY` |
+| **Cohere** | `cohere-ai` | `command-r-plus`, `command-r` | `COHERE_API_KEY` |
+| **Azure OpenAI** | `openai` (with Azure config) | Any deployed model | `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT` |
+| **Together AI** (Llama, etc.) | `openai` (OpenAI-compatible) | `meta-llama/Llama-3-70b`, `mistralai/Mixtral-8x7B` | `TOGETHER_API_KEY` |
+| **Groq** | `openai` (OpenAI-compatible) | `llama3-70b-8192`, `mixtral-8x7b-32768` | `GROQ_API_KEY` |
+| **Perplexity** | `openai` (OpenAI-compatible) | `llama-3-sonar-large-32k-online` | `PERPLEXITY_API_KEY` |
+
 ### How to Add a New Provider
 
-#### 1. Claude (Anthropic)
+#### 1. Claude Sonnet 4 (Anthropic)
 
 Create `artifacts/api-server/src/lib/ai-providers/claude-provider.ts`:
 
@@ -104,7 +119,7 @@ import type { AIProvider, AIProviderConfig, LabReportResult } from "./types";
 import { SYSTEM_PROMPT, buildUserPrompt } from "./prompt";
 
 export class ClaudeProvider implements AIProvider {
-  readonly name = "Claude (Anthropic)";
+  readonly name = "Claude Sonnet 4 (Anthropic)";
   readonly id = "claude";
   readonly description = "Anthropic Claude for biomarker analysis";
   private client: Anthropic;
@@ -194,7 +209,19 @@ export class AWSBedrockProvider implements AIProvider {
     const response = await this.client.send(command);
     const body = JSON.parse(new TextDecoder().decode(response.body));
     const parsed = JSON.parse(body.content[0].text);
-    // ... same result construction as other providers
+    const biomarkers = parsed.biomarkers || [];
+
+    return {
+      patient: parsed.patient || {},
+      biomarkers,
+      summary: {
+        total: biomarkers.length,
+        optimal: biomarkers.filter((b: any) => b.classification === "optimal").length,
+        normal: biomarkers.filter((b: any) => b.classification === "normal").length,
+        outOfRange: biomarkers.filter((b: any) => b.classification === "out_of_range").length,
+      },
+      aiProvider: this.id,
+    };
   }
 }
 ```
@@ -226,9 +253,154 @@ export class GeminiProvider implements AIProvider {
 
     const result = await model.generateContent(buildUserPrompt(pdfText));
     const parsed = JSON.parse(result.response.text());
-    // ... same result construction
+    const biomarkers = parsed.biomarkers || [];
+
+    return {
+      patient: parsed.patient || {},
+      biomarkers,
+      summary: {
+        total: biomarkers.length,
+        optimal: biomarkers.filter((b: any) => b.classification === "optimal").length,
+        normal: biomarkers.filter((b: any) => b.classification === "normal").length,
+        outOfRange: biomarkers.filter((b: any) => b.classification === "out_of_range").length,
+      },
+      aiProvider: this.id,
+    };
   }
 }
+```
+
+#### 4. Mistral AI
+
+```typescript
+import { Mistral } from "@mistralai/mistralai";
+import type { AIProvider, LabReportResult } from "./types";
+import { SYSTEM_PROMPT, buildUserPrompt } from "./prompt";
+
+export class MistralProvider implements AIProvider {
+  readonly name = "Mistral AI";
+  readonly id = "mistral";
+  readonly description = "Mistral AI Large for biomarker analysis";
+  private client: Mistral;
+  private model: string;
+
+  constructor(apiKey: string, model: string = "mistral-large-latest") {
+    this.client = new Mistral({ apiKey });
+    this.model = model;
+  }
+
+  async analyzeReport(pdfText: string): Promise<LabReportResult> {
+    const response = await this.client.chat.complete({
+      model: this.model,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: buildUserPrompt(pdfText) },
+      ],
+      responseFormat: { type: "json_object" },
+    });
+
+    const content = response.choices?.[0]?.message?.content;
+    if (!content) throw new Error("No response from Mistral");
+
+    const parsed = JSON.parse(content as string);
+    const biomarkers = parsed.biomarkers || [];
+
+    return {
+      patient: parsed.patient || {},
+      biomarkers,
+      summary: {
+        total: biomarkers.length,
+        optimal: biomarkers.filter((b: any) => b.classification === "optimal").length,
+        normal: biomarkers.filter((b: any) => b.classification === "normal").length,
+        outOfRange: biomarkers.filter((b: any) => b.classification === "out_of_range").length,
+      },
+      aiProvider: this.id,
+    };
+  }
+}
+```
+
+#### 5. Azure OpenAI
+
+```typescript
+import OpenAI from "openai";
+import type { AIProvider, LabReportResult } from "./types";
+import { SYSTEM_PROMPT, buildUserPrompt } from "./prompt";
+
+export class AzureOpenAIProvider implements AIProvider {
+  readonly name = "Azure OpenAI";
+  readonly id = "azure-openai";
+  readonly description = "Azure-hosted OpenAI models";
+  private client: OpenAI;
+  private model: string;
+
+  constructor(endpoint: string, apiKey: string, deployment: string, apiVersion: string = "2024-02-01") {
+    this.client = new OpenAI({
+      apiKey,
+      baseURL: `${endpoint}/openai/deployments/${deployment}`,
+      defaultQuery: { "api-version": apiVersion },
+      defaultHeaders: { "api-key": apiKey },
+    });
+    this.model = deployment;
+  }
+
+  async analyzeReport(pdfText: string): Promise<LabReportResult> {
+    const response = await this.client.chat.completions.create({
+      model: this.model,
+      max_tokens: 8192,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: buildUserPrompt(pdfText) },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("No response from Azure OpenAI");
+
+    const parsed = JSON.parse(content);
+    const biomarkers = parsed.biomarkers || [];
+
+    return {
+      patient: parsed.patient || {},
+      biomarkers,
+      summary: {
+        total: biomarkers.length,
+        optimal: biomarkers.filter((b: any) => b.classification === "optimal").length,
+        normal: biomarkers.filter((b: any) => b.classification === "normal").length,
+        outOfRange: biomarkers.filter((b: any) => b.classification === "out_of_range").length,
+      },
+      aiProvider: this.id,
+    };
+  }
+}
+```
+
+#### 6. OpenAI-Compatible Providers (Together AI, Groq, Perplexity, etc.)
+
+Many providers offer OpenAI-compatible APIs. You can use the existing `OpenAIProvider` class with a different base URL:
+
+```typescript
+// Together AI (Llama, Mixtral, etc.)
+providers.set("together", new OpenAIProvider({
+  baseUrl: "https://api.together.xyz/v1",
+  apiKey: process.env["TOGETHER_API_KEY"]!,
+  model: "meta-llama/Llama-3-70b-chat-hf",
+}));
+
+// Groq (ultra-fast inference)
+providers.set("groq", new OpenAIProvider({
+  baseUrl: "https://api.groq.com/openai/v1",
+  apiKey: process.env["GROQ_API_KEY"]!,
+  model: "llama3-70b-8192",
+}));
+
+// Perplexity (with online search)
+providers.set("perplexity", new OpenAIProvider({
+  baseUrl: "https://api.perplexity.ai",
+  apiKey: process.env["PERPLEXITY_API_KEY"]!,
+  model: "llama-3-sonar-large-32k-online",
+}));
 ```
 
 ### Switching Providers
@@ -236,10 +408,16 @@ export class GeminiProvider implements AIProvider {
 Set the `AI_PROVIDER` environment variable to switch the default:
 
 ```bash
-AI_PROVIDER=openai    # Default
-AI_PROVIDER=claude    # Anthropic Claude
-AI_PROVIDER=aws-bedrock  # AWS Bedrock
-AI_PROVIDER=gemini    # Google Gemini
+AI_PROVIDER=openai        # Default — OpenAI GPT-4o
+AI_PROVIDER=claude        # Anthropic Claude Sonnet 4
+AI_PROVIDER=aws-bedrock   # AWS Bedrock (Claude/Titan)
+AI_PROVIDER=gemini        # Google Gemini Pro
+AI_PROVIDER=mistral       # Mistral AI Large
+AI_PROVIDER=azure-openai  # Azure OpenAI Service
+AI_PROVIDER=together      # Together AI (Llama, Mixtral)
+AI_PROVIDER=groq          # Groq (ultra-fast inference)
+AI_PROVIDER=perplexity    # Perplexity (with search)
+AI_PROVIDER=cohere        # Cohere Command R+
 ```
 
 ---
@@ -334,7 +512,7 @@ Client → API Gateway → SQS Queue → Lambda/ECS Worker → S3 (results)
 
 ---
 
-## Cloud Deployment — AWS Solution
+## Cloud Deployment — AWS Solution (Recommended)
 
 ### Recommended AWS Architecture
 
@@ -388,7 +566,6 @@ Client → API Gateway → SQS Queue → Lambda/ECS Worker → S3 (results)
 ### Infrastructure as Code (Terraform)
 
 ```hcl
-# Example Terraform configuration
 module "lab_analyzer" {
   source = "./modules/ecs-service"
 
@@ -398,9 +575,9 @@ module "lab_analyzer" {
   memory          = 1024
 
   environment = {
-    AI_PROVIDER                       = "openai"
-    AI_INTEGRATIONS_OPENAI_BASE_URL   = "from-secrets-manager"
-    AI_INTEGRATIONS_OPENAI_API_KEY    = "from-secrets-manager"
+    AI_PROVIDER      = "openai"
+    OPENAI_BASE_URL  = "from-secrets-manager"
+    OPENAI_API_KEY   = "from-secrets-manager"
   }
 
   health_check_path = "/api/healthz"
