@@ -5,18 +5,27 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  AiProvidersResponse,
+  AnalyzeReportBody,
+  ErrorResponse,
+  HealthStatus,
+  LabReportResult,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -92,6 +101,171 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Upload a PDF lab report, extract biomarkers, standardize names/units, and classify results
+ * @summary Analyze a lab report PDF
+ */
+export const getAnalyzeReportUrl = () => {
+  return `/api/analyze-report`;
+};
+
+export const analyzeReport = async (
+  analyzeReportBody: AnalyzeReportBody,
+  options?: RequestInit,
+): Promise<LabReportResult> => {
+  const formData = new FormData();
+  formData.append(`file`, analyzeReportBody.file);
+
+  return customFetch<LabReportResult>(getAnalyzeReportUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getAnalyzeReportMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzeReport>>,
+    TError,
+    { data: BodyType<AnalyzeReportBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof analyzeReport>>,
+  TError,
+  { data: BodyType<AnalyzeReportBody> },
+  TContext
+> => {
+  const mutationKey = ["analyzeReport"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof analyzeReport>>,
+    { data: BodyType<AnalyzeReportBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return analyzeReport(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AnalyzeReportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof analyzeReport>>
+>;
+export type AnalyzeReportMutationBody = BodyType<AnalyzeReportBody>;
+export type AnalyzeReportMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Analyze a lab report PDF
+ */
+export const useAnalyzeReport = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzeReport>>,
+    TError,
+    { data: BodyType<AnalyzeReportBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof analyzeReport>>,
+  TError,
+  { data: BodyType<AnalyzeReportBody> },
+  TContext
+> => {
+  return useMutation(getAnalyzeReportMutationOptions(options));
+};
+
+/**
+ * Returns list of supported AI providers
+ * @summary Get available AI providers
+ */
+export const getGetAiProvidersUrl = () => {
+  return `/api/ai-providers`;
+};
+
+export const getAiProviders = async (
+  options?: RequestInit,
+): Promise<AiProvidersResponse> => {
+  return customFetch<AiProvidersResponse>(getGetAiProvidersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAiProvidersQueryKey = () => {
+  return [`/api/ai-providers`] as const;
+};
+
+export const getGetAiProvidersQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAiProviders>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAiProviders>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAiProvidersQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAiProviders>>> = ({
+    signal,
+  }) => getAiProviders({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAiProviders>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAiProvidersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAiProviders>>
+>;
+export type GetAiProvidersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get available AI providers
+ */
+
+export function useGetAiProviders<
+  TData = Awaited<ReturnType<typeof getAiProviders>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAiProviders>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAiProvidersQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

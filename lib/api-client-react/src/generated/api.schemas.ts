@@ -8,3 +8,82 @@
 export interface HealthStatus {
   status: string;
 }
+
+/**
+ * Classification based on patient age and sex
+ */
+export type BiomarkerClassification =
+  (typeof BiomarkerClassification)[keyof typeof BiomarkerClassification];
+
+export const BiomarkerClassification = {
+  optimal: "optimal",
+  normal: "normal",
+  out_of_range: "out_of_range",
+} as const;
+
+export interface Biomarker {
+  /** Original biomarker name as it appears in the report */
+  originalName: string;
+  /** Standardized English biomarker name */
+  standardizedName: string;
+  /** Numeric value of the biomarker */
+  value: number;
+  /** Unit as it appears in the report */
+  originalUnit: string;
+  /** Standardized unit in English */
+  standardizedUnit: string;
+  /** Minimum reference range value */
+  referenceMin?: number | null;
+  /** Maximum reference range value */
+  referenceMax?: number | null;
+  /** Classification based on patient age and sex */
+  classification: BiomarkerClassification;
+  /** Explanation of the classification */
+  classificationDetail: string;
+}
+
+export interface PatientInfo {
+  name?: string | null;
+  age?: number | null;
+  sex?: string | null;
+  dateOfBirth?: string | null;
+  reportDate?: string | null;
+  labName?: string | null;
+}
+
+export type LabReportResultSummary = {
+  total: number;
+  optimal: number;
+  normal: number;
+  outOfRange: number;
+};
+
+export interface LabReportResult {
+  patient: PatientInfo;
+  biomarkers: Biomarker[];
+  summary: LabReportResultSummary;
+  /** Which AI provider was used for analysis */
+  aiProvider: string;
+}
+
+export type AiProvidersResponseProvidersItem = {
+  id: string;
+  name: string;
+  description: string;
+  active: boolean;
+};
+
+export interface AiProvidersResponse {
+  providers: AiProvidersResponseProvidersItem[];
+  currentProvider: string;
+}
+
+export interface ErrorResponse {
+  error: string;
+  details?: string;
+}
+
+export type AnalyzeReportBody = {
+  /** The PDF lab report file */
+  file: Blob;
+};

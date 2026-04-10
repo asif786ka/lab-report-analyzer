@@ -14,3 +14,72 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Upload a PDF lab report, extract biomarkers, standardize names/units, and classify results
+ * @summary Analyze a lab report PDF
+ */
+export const AnalyzeReportBody = zod.object({
+  file: zod.instanceof(File).describe("The PDF lab report file"),
+});
+
+export const AnalyzeReportResponse = zod.object({
+  patient: zod.object({
+    name: zod.string().nullish(),
+    age: zod.number().nullish(),
+    sex: zod.string().nullish(),
+    dateOfBirth: zod.string().nullish(),
+    reportDate: zod.string().nullish(),
+    labName: zod.string().nullish(),
+  }),
+  biomarkers: zod.array(
+    zod.object({
+      originalName: zod
+        .string()
+        .describe("Original biomarker name as it appears in the report"),
+      standardizedName: zod
+        .string()
+        .describe("Standardized English biomarker name"),
+      value: zod.number().describe("Numeric value of the biomarker"),
+      originalUnit: zod.string().describe("Unit as it appears in the report"),
+      standardizedUnit: zod.string().describe("Standardized unit in English"),
+      referenceMin: zod
+        .number()
+        .nullish()
+        .describe("Minimum reference range value"),
+      referenceMax: zod
+        .number()
+        .nullish()
+        .describe("Maximum reference range value"),
+      classification: zod
+        .enum(["optimal", "normal", "out_of_range"])
+        .describe("Classification based on patient age and sex"),
+      classificationDetail: zod
+        .string()
+        .describe("Explanation of the classification"),
+    }),
+  ),
+  summary: zod.object({
+    total: zod.number(),
+    optimal: zod.number(),
+    normal: zod.number(),
+    outOfRange: zod.number(),
+  }),
+  aiProvider: zod.string().describe("Which AI provider was used for analysis"),
+});
+
+/**
+ * Returns list of supported AI providers
+ * @summary Get available AI providers
+ */
+export const GetAiProvidersResponse = zod.object({
+  providers: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      description: zod.string(),
+      active: zod.boolean(),
+    }),
+  ),
+  currentProvider: zod.string(),
+});

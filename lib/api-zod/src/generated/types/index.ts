@@ -6,4 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./aiProvidersResponse";
+export * from "./aiProvidersResponseProvidersItem";
+export * from "./analyzeReportBody";
+export * from "./biomarker";
+export * from "./biomarkerClassification";
+export * from "./errorResponse";
 export * from "./healthStatus";
+export * from "./labReportResult";
+export * from "./labReportResultSummary";
+export * from "./patientInfo";

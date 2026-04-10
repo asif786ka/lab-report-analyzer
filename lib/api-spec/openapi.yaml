@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: lab-report
+    description: Lab report analysis operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,57 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /analyze-report:
+    post:
+      operationId: analyzeReport
+      tags: [lab-report]
+      summary: Analyze a lab report PDF
+      description: Upload a PDF lab report, extract biomarkers, standardize names/units, and classify results
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The PDF lab report file
+              required:
+                - file
+      responses:
+        "200":
+          description: Successfully analyzed report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LabReportResult"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /ai-providers:
+    get:
+      operationId: getAiProviders
+      tags: [lab-report]
+      summary: Get available AI providers
+      description: Returns list of supported AI providers
+      responses:
+        "200":
+          description: List of providers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiProvidersResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +86,133 @@ components:
           type: string
       required:
         - status
-
+    Biomarker:
+      type: object
+      properties:
+        originalName:
+          type: string
+          description: Original biomarker name as it appears in the report
+        standardizedName:
+          type: string
+          description: Standardized English biomarker name
+        value:
+          type: number
+          description: Numeric value of the biomarker
+        originalUnit:
+          type: string
+          description: Unit as it appears in the report
+        standardizedUnit:
+          type: string
+          description: Standardized unit in English
+        referenceMin:
+          type: number
+          nullable: true
+          description: Minimum reference range value
+        referenceMax:
+          type: number
+          nullable: true
+          description: Maximum reference range value
+        classification:
+          type: string
+          enum: [optimal, normal, out_of_range]
+          description: Classification based on patient age and sex
+        classificationDetail:
+          type: string
+          description: Explanation of the classification
+      required:
+        - originalName
+        - standardizedName
+        - value
+        - originalUnit
+        - standardizedUnit
+        - classification
+        - classificationDetail
+    PatientInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        age:
+          type: number
+          nullable: true
+        sex:
+          type: string
+          nullable: true
+        dateOfBirth:
+          type: string
+          nullable: true
+        reportDate:
+          type: string
+          nullable: true
+        labName:
+          type: string
+          nullable: true
+    LabReportResult:
+      type: object
+      properties:
+        patient:
+          $ref: "#/components/schemas/PatientInfo"
+        biomarkers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Biomarker"
+        summary:
+          type: object
+          properties:
+            total:
+              type: integer
+            optimal:
+              type: integer
+            normal:
+              type: integer
+            outOfRange:
+              type: integer
+          required:
+            - total
+            - optimal
+            - normal
+            - outOfRange
+        aiProvider:
+          type: string
+          description: Which AI provider was used for analysis
+      required:
+        - patient
+        - biomarkers
+        - summary
+        - aiProvider
+    AiProvidersResponse:
+      type: object
+      properties:
+        providers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              description:
+                type: string
+              active:
+                type: boolean
+            required:
+              - id
+              - name
+              - description
+              - active
+        currentProvider:
+          type: string
+      required:
+        - providers
+        - currentProvider
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+      required:
+        - error
