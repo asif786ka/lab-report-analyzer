@@ -10,6 +10,7 @@ export interface PatientInfo {
 export interface Biomarker {
   originalName: string;
   standardizedName: string;
+  category: string;
   value: number;
   originalUnit: string;
   standardizedUnit: string;

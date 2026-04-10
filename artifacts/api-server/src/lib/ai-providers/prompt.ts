@@ -14,6 +14,7 @@ You MUST return a valid JSON object with the following structure:
     {
       "originalName": "name as it appears in report",
       "standardizedName": "standardized English name (e.g., 'Hemoglobin', 'White Blood Cell Count', 'Glucose')",
+      "category": "category grouping (e.g., 'Complete Blood Count', 'Lipid Panel', 'Liver Function', 'Kidney Function', 'Thyroid Panel', 'Metabolic Panel', 'Electrolytes', 'Vitamins & Minerals', 'Hormones', 'Inflammatory Markers', 'Iron Studies', 'Urinalysis', 'Other')",
       "value": numeric_value,
       "originalUnit": "unit as it appears in report",
       "standardizedUnit": "standardized unit (e.g., 'g/dL', 'cells/uL', 'mg/dL')",

@@ -95,6 +95,9 @@ components:
         standardizedName:
           type: string
           description: Standardized English biomarker name
+        category:
+          type: string
+          description: Category grouping (e.g., Complete Blood Count, Lipid Panel, Liver Function)
         value:
           type: number
           description: Numeric value of the biomarker
@@ -122,6 +125,7 @@ components:
       required:
         - originalName
         - standardizedName
+        - category
         - value
         - originalUnit
         - standardizedUnit

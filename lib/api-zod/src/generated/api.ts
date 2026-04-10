@@ -40,6 +40,11 @@ export const AnalyzeReportResponse = zod.object({
       standardizedName: zod
         .string()
         .describe("Standardized English biomarker name"),
+      category: zod
+        .string()
+        .describe(
+          "Category grouping (e.g., Complete Blood Count, Lipid Panel, Liver Function)",
+        ),
       value: zod.number().describe("Numeric value of the biomarker"),
       originalUnit: zod.string().describe("Unit as it appears in the report"),
       standardizedUnit: zod.string().describe("Standardized unit in English"),

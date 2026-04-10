@@ -12,6 +12,8 @@ export interface Biomarker {
   originalName: string;
   /** Standardized English biomarker name */
   standardizedName: string;
+  /** Category grouping (e.g., Complete Blood Count, Lipid Panel, Liver Function) */
+  category: string;
   /** Numeric value of the biomarker */
   value: number;
   /** Unit as it appears in the report */
